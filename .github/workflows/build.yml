@@ -1,0 +1,36 @@
+name: Build APK
+on: [push, workflow_dispatch]
+jobs:
+  build:
+    runs-on: ubuntu-latest
+    steps:
+      - uses: actions/checkout@v4
+
+      - name: Ekstrak zip
+        run: unzip -o *.zip
+
+      - name: Ambil whisper.cpp
+        run: |
+          git clone --depth 1 https://github.com/ggerganov/whisper.cpp.git whisper.cpp
+          L=whisper.cpp/examples/whisper.android/lib
+          J=$L/src/main/jni/whisper/jni.c
+          rm -f $L/build.gradle $L/build.gradle.kts
+          cp whisper-lib.gradle.kts $L/build.gradle.kts
+          sed -i 's/params.language = "en"/params.language = "id"/' $J
+          sed -i 's/params.single_segment = false;/params.single_segment = false; params.language = "id";/' $J
+
+      - uses: actions/setup-java@v4
+        with:
+          distribution: temurin
+          java-version: 17
+
+      - uses: gradle/actions/setup-gradle@v4
+        with:
+          gradle-version: "8.7"
+
+      - run: gradle assembleDebug --no-daemon
+
+      - uses: actions/upload-artifact@v4
+        with:
+          name: VoiceOverFix-apk
+          path: app/build/outputs/apk/debug/*.apk
